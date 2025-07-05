@@ -161,3 +161,45 @@ def image_shear(img: np.array, sv: float, sh: float) -> np.array:
         add_height // 2 : height + add_height // 2,
         add_weight // 2 : width + add_weight // 2,
     ]
+
+
+def upscaleLinear(img, n):
+
+    def fit_linear(vec):
+        """Linearly interpolate nonzero entries between known values in vec (1D array)."""
+        # Get the indices of non-zero elements
+        known_indices = np.where(vec != 0)[0]
+
+        if len(known_indices) < 2:
+            return vec  # not enough data to interpolate
+
+        for i in range(len(known_indices) - 1):
+            x1 = known_indices[i]
+            x2 = known_indices[i + 1]
+            y1 = vec[x1]
+            y2 = vec[x2]
+
+            for x in range(x1 + 1, x2):
+                vec[x] = y1 + (y2 - y1) * ((x - x1) / (x2 - x1))
+
+        return vec
+
+    h, w = img.shape
+    new_h = h + (h - 1) * n
+    new_w = w + (w - 1) * n
+    output = np.zeros((new_h, new_w), dtype=img.dtype)
+
+    # Step 1: Place original values into output grid
+    for i in range(h):
+        for j in range(w):
+            output[i * (n + 1), j * (n + 1)] = img[i, j]
+
+    # Step 2: Interpolate along rows
+    for i in range(output.shape[0]):
+        output[i] = fit_linear(output[i])
+
+    # Step 3: Interpolate along columns
+    for j in range(output.shape[1]):
+        output[:, j] = fit_linear(output[:, j])
+
+    return output
